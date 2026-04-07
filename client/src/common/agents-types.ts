@@ -44,6 +44,8 @@ export type AgentForm = {
   edges?: GraphEdge[];
   [AgentCapabilities.artifacts]?: ArtifactModes | string;
   recursion_limit?: number;
+  auto_compact?: boolean;
+  compact_threshold?: number;
   support_contact?: SupportContact;
   category: string;
   // Avatar management fields

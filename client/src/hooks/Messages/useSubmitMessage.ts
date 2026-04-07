@@ -3,14 +3,16 @@ import { useRecoilValue, useSetRecoilState } from 'recoil';
 import { replaceSpecialVars } from 'librechat-data-provider';
 import { useChatContext, useChatFormContext, useAddedChatContext } from '~/Providers';
 import { useAuthContext } from '~/hooks/AuthContext';
+import { useCompactConversation } from '~/data-provider';
 import store from '~/store';
 
 export default function useSubmitMessage() {
   const { user } = useAuthContext();
   const methods = useChatFormContext();
   const { conversation: addedConvo } = useAddedChatContext();
-  const { ask, index, getMessages, setMessages } = useChatContext();
+  const { ask, index, getMessages, setMessages, conversation } = useChatContext();
   const latestMessage = useRecoilValue(store.latestMessageFamily(index));
+  const compactConversation = useCompactConversation();
 
   const autoSendPrompts = useRecoilValue(store.autoSendPrompts);
   const setActivePrompt = useSetRecoilState(store.activePromptByIndex(index));
@@ -20,6 +22,16 @@ export default function useSubmitMessage() {
       if (!data) {
         return console.warn('No data provided to submitMessage');
       }
+
+      if (data.text.trim().toLowerCase() === '/compact') {
+        methods.reset();
+        const conversationId = conversation?.conversationId;
+        if (conversationId && conversationId !== 'new') {
+          compactConversation(conversationId);
+        }
+        return;
+      }
+
       const rootMessages = getMessages();
       const isLatestInRootMessages = rootMessages?.some(
         (message) => message.messageId === latestMessage?.messageId,
@@ -38,7 +50,7 @@ export default function useSubmitMessage() {
       );
       methods.reset();
     },
-    [ask, methods, addedConvo, setMessages, getMessages, latestMessage],
+    [ask, methods, addedConvo, setMessages, getMessages, latestMessage, conversation, compactConversation],
   );
 
   const submitPrompt = useCallback(

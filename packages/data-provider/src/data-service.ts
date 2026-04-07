@@ -733,6 +733,10 @@ export function getConversationById(id: string): Promise<s.TConversation> {
   return request.get(endpoints.conversationById(id));
 }
 
+export function compactConversation(conversationId: string): Promise<{ message: string }> {
+  return request.post(endpoints.compactConversation(conversationId), {});
+}
+
 export function updateConversation(
   payload: t.TUpdateConversationRequest,
 ): Promise<t.TUpdateConversationResponse> {

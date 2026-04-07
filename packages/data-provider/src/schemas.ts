@@ -264,6 +264,8 @@ export const defaultAgentFormValues = {
   /** @deprecated Use ACL permissions instead */
   isCollaborative: false,
   recursion_limit: undefined,
+  auto_compact: false,
+  compact_threshold: 80,
   [Tools.execute_code]: false,
   [Tools.file_search]: false,
   [Tools.web_search]: false,

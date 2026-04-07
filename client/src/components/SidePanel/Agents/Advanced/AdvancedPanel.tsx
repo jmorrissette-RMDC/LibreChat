@@ -4,6 +4,7 @@ import { AgentCapabilities } from 'librechat-data-provider';
 import { useFormContext, Controller } from 'react-hook-form';
 import type { AgentForm } from '~/common';
 import { useAgentPanelContext } from '~/Providers';
+import AutoCompact from './AutoCompact';
 import MaxAgentSteps from './MaxAgentSteps';
 import AgentHandoffs from './AgentHandoffs';
 import { useLocalize } from '~/hooks';
@@ -43,6 +44,7 @@ export default function AdvancedPanel() {
       </div>
       <div className="flex flex-col gap-4 px-2">
         <MaxAgentSteps />
+        <AutoCompact />
         <Controller
           name="edges"
           control={control}

@@ -1035,6 +1035,14 @@ export const useResendVerificationEmail = (
   });
 };
 
+export const useCompactConversationMutation = () =>
+  useMutation((conversationId: string) => dataService.compactConversation(conversationId));
+
+export const useCompactConversation = () => {
+  const mutation = useCompactConversationMutation();
+  return (conversationId: string) => mutation.mutate(conversationId);
+};
+
 export const useAcceptTermsMutation = (
   options?: t.AcceptTermsMutationOptions,
 ): UseMutationResult<t.TAcceptTermsResponse, unknown, void, unknown> => {

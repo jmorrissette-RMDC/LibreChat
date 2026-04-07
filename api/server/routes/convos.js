@@ -315,4 +315,71 @@ router.post('/duplicate', forkIpLimiter, forkUserLimiter, async (req, res) => {
   }
 });
 
+/**
+ * Manually triggers context compaction for a conversation.
+ * Summarizes the oldest messages (all but the newest 10% of the context window)
+ * and stores the summary on the oldest message in the DB.
+ * @route POST /:conversationId/compact
+ */
+router.post('/:conversationId/compact', validateConvoAccess, async (req, res) => {
+  const { conversationId } = req.params;
+  const userId = req.user.id;
+
+  try {
+    const { getMessages, updateMessage } = require('~/models');
+    const messages = await getMessages({ conversationId });
+
+    if (!messages || messages.length === 0) {
+      return res.json({ message: 'No messages to compact' });
+    }
+
+    /** Lazy-import to avoid circular deps at module load time */
+    const { OpenAI } = require('openai');
+    const { COMPACT_PROMPT } = require('~/app/clients/prompts');
+
+    /** Use the app-level OpenAI key as fallback for the summary call */
+    const apiKey = process.env.OPENAI_API_KEY;
+    const model = process.env.COMPACT_MODEL ?? 'gpt-4o-mini';
+
+    const SUMMARY_RATIO = 0.7;
+    const toSummarize = messages.slice(0, Math.floor(messages.length * SUMMARY_RATIO));
+
+    const newLines = toSummarize
+      .map((m) => {
+        const role = m.role === 'assistant' ? 'Assistant' : 'User';
+        const content = typeof m.content === 'string' ? m.content : '';
+        return `${role}: ${content}`;
+      })
+      .filter(Boolean)
+      .join('\n');
+
+    const prompt = await COMPACT_PROMPT.format({ new_lines: newLines, max_tokens: 500 });
+    const client = new OpenAI({ apiKey });
+    const response = await client.chat.completions.create({
+      model,
+      messages: [{ role: 'user', content: prompt }],
+      max_tokens: 500,
+      temperature: 0.3,
+    });
+
+    const summary = response.choices?.[0]?.message?.content ?? '';
+    if (!summary) {
+      return res.json({ message: 'Compaction produced no summary' });
+    }
+
+    await updateMessage({
+      messageId: toSummarize[0].messageId,
+      summary,
+      summaryTokenCount: summary.length / 4,
+      user: userId,
+    });
+
+    logger.debug(`[POST /:conversationId/compact] Compacted ${toSummarize.length} messages for ${conversationId}`);
+    res.json({ message: `Compacted ${toSummarize.length} messages` });
+  } catch (error) {
+    logger.error('Error compacting conversation:', error);
+    res.status(500).send('Error compacting conversation');
+  }
+});
+
 module.exports = router;
