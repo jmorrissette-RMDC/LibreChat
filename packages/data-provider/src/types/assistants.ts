@@ -269,6 +269,8 @@ export type Agent = {
   hide_sequential_outputs?: boolean;
   artifacts?: ArtifactModes;
   recursion_limit?: number;
+  auto_compact?: boolean;
+  compact_threshold?: number;
   isPublic?: boolean;
   version?: number;
   category?: string;
@@ -297,6 +299,8 @@ export type AgentCreateParams = {
   | 'hide_sequential_outputs'
   | 'artifacts'
   | 'recursion_limit'
+  | 'auto_compact'
+  | 'compact_threshold'
   | 'category'
   | 'support_contact'
   | 'tool_options'
@@ -324,6 +328,8 @@ export type AgentUpdateParams = {
   | 'hide_sequential_outputs'
   | 'artifacts'
   | 'recursion_limit'
+  | 'auto_compact'
+  | 'compact_threshold'
   | 'category'
   | 'support_contact'
   | 'tool_options'

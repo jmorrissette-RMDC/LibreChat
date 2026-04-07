@@ -47,7 +47,26 @@ const CUT_OFF_PROMPT = new PromptTemplate({
   template: _CUT_OFF_SUMMARIZER,
 });
 
+/*
+ * Without `{new_lines}` and `{max_tokens}`, token count is 47
+ * Used for proactive compaction — targets a specific token budget for output.
+ */
+const _COMPACT_SUMMARIZER_TEMPLATE = `You are compacting a conversation history to free up context space.
+
+Summarize the following conversation into a concise summary. Your summary MUST fit within {max_tokens} tokens — be as concise as possible while preserving all key decisions, facts, file paths, outcomes, and any information the user or assistant would need to continue the conversation without re-reading the original.
+
+Conversation:
+{new_lines}
+
+Summary:`;
+
+const COMPACT_PROMPT = new PromptTemplate({
+  inputVariables: ['new_lines', 'max_tokens'],
+  template: _COMPACT_SUMMARIZER_TEMPLATE,
+});
+
 module.exports = {
   SUMMARY_PROMPT,
   CUT_OFF_PROMPT,
+  COMPACT_PROMPT,
 };

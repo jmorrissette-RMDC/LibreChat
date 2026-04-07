@@ -21,6 +21,8 @@ export interface IAgent extends Omit<Document, 'model'> {
   artifacts?: string;
   access_level?: number;
   recursion_limit?: number;
+  auto_compact?: boolean;
+  compact_threshold?: number;
   tools?: string[];
   tool_kwargs?: Array<unknown>;
   actions?: string[];

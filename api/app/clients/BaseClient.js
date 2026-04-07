@@ -487,10 +487,23 @@ class BaseClient {
 
     let orderedWithInstructions = this.addInstructions(orderedMessages, instructions);
 
+    // Proactive compaction: if auto_compact is on and the current context exceeds the
+    // threshold, pass a reduced maxContextTokens so that everything outside the newest
+    // 10% of the window falls into messagesToRefine and gets summarized.
+    const totalTokens = orderedWithInstructions.reduce((sum, m) => sum + (m.tokenCount ?? 0), 0);
+    const threshold = this.compactThreshold ?? 1;
+    const proactiveCompact =
+      this.shouldSummarize &&
+      this.compactThreshold != null &&
+      totalTokens >= this.maxContextTokens * threshold;
+    const rawWindowTokens = Math.floor(this.maxContextTokens * 0.1);
+    const compactMaxTokens = proactiveCompact ? rawWindowTokens : undefined;
+
     let { context, remainingContextTokens, messagesToRefine } =
       await this.getMessagesWithinTokenLimit({
         messages: orderedWithInstructions,
         instructions,
+        maxContextTokens: compactMaxTokens,
       });
 
     logger.debug('[BaseClient] Context Count (1/2)', {

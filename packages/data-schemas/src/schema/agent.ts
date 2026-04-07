@@ -42,6 +42,16 @@ const agentSchema = new Schema<IAgent>(
     recursion_limit: {
       type: Number,
     },
+    auto_compact: {
+      type: Boolean,
+      default: false,
+    },
+    compact_threshold: {
+      type: Number,
+      default: 80,
+      min: 10,
+      max: 99,
+    },
     tools: {
       type: [String],
       default: undefined,

@@ -49,7 +49,8 @@ const { spendTokens, spendStructuredTokens } = require('~/models/spendTokens');
 const { encodeAndFormat } = require('~/server/services/Files/images/encode');
 const { updateBalance, bulkInsertTransactions } = require('~/models');
 const { getMultiplier, getCacheMultiplier } = require('~/models/tx');
-const { createContextHandlers } = require('~/app/clients/prompts');
+const { createContextHandlers, COMPACT_PROMPT } = require('~/app/clients/prompts');
+const { OpenAI } = require('openai');
 const { getConvoFiles } = require('~/models/Conversation');
 const BaseClient = require('~/app/clients/BaseClient');
 const { getRoleByName } = require('~/models/Role');
@@ -64,8 +65,16 @@ class AgentClient extends BaseClient {
      * @type {string} */
     this.clientName = EModelEndpoint.agents;
 
+    const { auto_compact = false, compact_threshold = 80 } = options.agent ?? {};
+
     /** @type {'discard' | 'summarize'} */
-    this.contextStrategy = 'discard';
+    this.contextStrategy = auto_compact ? 'summarize' : 'discard';
+
+    /** @type {boolean} */
+    this.shouldSummarize = auto_compact;
+
+    /** Fraction of maxContextTokens at which proactive compaction fires (e.g. 0.80) */
+    this.compactThreshold = Math.min(Math.max(compact_threshold, 10), 99) / 100;
 
     /** @deprecated @type {true} - Is a Chat Completion Request */
     this.isChatCompletion = true;
@@ -159,6 +168,71 @@ class AgentClient extends BaseClient {
    */
   getBuildMessagesOptions() {
     return {};
+  }
+
+  /**
+   * Proactively summarizes older messages to compact the context window.
+   *
+   * Triggered when total token count exceeds `compactThreshold` % of `maxContextTokens`.
+   * Summarizes all but the newest 10% of the window, targeting a ≤5% token budget for the
+   * summary. Result: ~15% used (5% summary + 10% raw), ~85% free after each compaction.
+   *
+   * @param {{ messagesToRefine: TMessage[], remainingContextTokens: number }} params
+   * @returns {Promise<{ summaryMessage: { role: string, content: string }, summaryTokenCount: number }>}
+   */
+  async summarizeMessages({ messagesToRefine }) {
+    const modelParams = this.options.agent?.model_parameters ?? {};
+    const { apiKey, model } = modelParams;
+    const baseURL = modelParams.clientOptions?.baseURL ?? modelParams.baseURL ?? undefined;
+
+    const summaryTokenBudget = Math.floor(this.maxContextTokens * 0.05);
+
+    const newLines = messagesToRefine
+      .map((m) => {
+        const role = m.role === 'assistant' ? 'Assistant' : 'User';
+        const content =
+          typeof m.content === 'string'
+            ? m.content
+            : Array.isArray(m.content)
+              ? m.content
+                  .filter((p) => p.type === 'text')
+                  .map((p) => p.text)
+                  .join(' ')
+              : '';
+        return `${role}: ${content}`;
+      })
+      .filter(Boolean)
+      .join('\n');
+
+    const prompt = await COMPACT_PROMPT.format({
+      new_lines: newLines,
+      max_tokens: summaryTokenBudget,
+    });
+
+    logger.debug(`[AgentClient] summarizeMessages: compacting ${messagesToRefine.length} messages, budget=${summaryTokenBudget} tokens`);
+
+    try {
+      const client = new OpenAI({ apiKey, baseURL });
+      const response = await client.chat.completions.create({
+        model,
+        messages: [{ role: 'user', content: prompt }],
+        max_tokens: summaryTokenBudget,
+        temperature: 0.3,
+      });
+
+      const summary = response.choices?.[0]?.message?.content ?? '';
+      const summaryTokenCount = this.getTokenCount(summary);
+
+      logger.debug(`[AgentClient] summarizeMessages: summary generated, tokens=${summaryTokenCount}`);
+
+      return {
+        summaryMessage: { role: 'system', content: `[Conversation Summary]\n${summary}` },
+        summaryTokenCount,
+      };
+    } catch (err) {
+      logger.error('[AgentClient] summarizeMessages failed, falling back to discard', err);
+      return { summaryMessage: null, summaryTokenCount: 0 };
+    }
   }
 
   /**
