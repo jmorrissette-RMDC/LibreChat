@@ -73,6 +73,8 @@ function AgentSelect({
       });
 
       const formValues: Partial<AgentForm & TAgentCapabilities> = {
+        auto_compact: false,
+        compact_threshold: 80,
         ...capabilities,
         agent: update,
         model: update.model,
