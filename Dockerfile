@@ -42,10 +42,8 @@ RUN \
 COPY --chown=node:node . .
 
 RUN \
-    # Build packages/data-schemas and packages/api (TypeScript → dist) before frontend build
-    cd packages/data-schemas && npm run build && cd ../.. ; \
-    cd packages/api && npm run build && cd ../.. ; \
-    # React client build with configurable memory
+    # npm run frontend builds: data-provider → data-schemas → api → client-package → client
+    # **/dist is excluded from Docker context (.dockerignore) so all packages build from source
     NODE_OPTIONS="--max-old-space-size=${NODE_MAX_OLD_SPACE_SIZE}" npm run frontend; \
     npm prune --production; \
     npm cache clean --force
