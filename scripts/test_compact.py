@@ -22,6 +22,7 @@ import os
 import sys
 import time
 import uuid
+from datetime import datetime, timezone
 import requests
 from pymongo import MongoClient
 
@@ -54,6 +55,7 @@ def load_fixture_messages(conversation_id, user_id, fixture_path=None):
         role = "user" if block.startswith("User:") else "assistant"
         text = block.replace("User: ", "", 1).replace("Assistant: ", "", 1)
         msg_id = str(uuid.uuid4())
+        iso_time = datetime.now(timezone.utc).isoformat()
         doc = {
             "messageId":        msg_id,
             "conversationId":   conversation_id,
@@ -64,8 +66,8 @@ def load_fixture_messages(conversation_id, user_id, fixture_path=None):
             "sender":           "user" if role == "user" else "assistant",
             "isCreatedByUser":  role == "user",
             "user":             user_id,
-            "createdAt":        time.time() + i,
-            "updatedAt":        time.time() + i,
+            "createdAt":        iso_time,
+            "updatedAt":        iso_time,
             "unfinished":       False,
             "error":            False,
         }
@@ -129,13 +131,14 @@ def main():
     db.messages.insert_many(messages)
     print(f"    Inserted {len(messages)} messages")
 
-    # Also create a minimal conversation record
+    # Also create a minimal conversation record (ISO timestamps required by LibreChat)
+    iso_now = datetime.now(timezone.utc).isoformat()
     db.conversations.insert_one({
         "conversationId": conversation_id,
         "user":           user_id,
         "title":          "Compact Test",
-        "createdAt":      time.time(),
-        "updatedAt":      time.time(),
+        "createdAt":      iso_now,
+        "updatedAt":      iso_now,
     })
 
     # --- Call compact endpoint ---

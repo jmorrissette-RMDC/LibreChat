@@ -120,7 +120,15 @@ function AgentSelect({
           return;
         }
 
-        if (name === 'recursion_limit' && typeof value === 'number') {
+        if (
+          (name === 'recursion_limit' || name === 'compact_threshold') &&
+          typeof value === 'number'
+        ) {
+          formValues[name] = value;
+          return;
+        }
+
+        if (name === 'auto_compact' && typeof value === 'boolean') {
           formValues[name] = value;
           return;
         }
