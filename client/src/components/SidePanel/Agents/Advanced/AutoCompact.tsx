@@ -15,7 +15,7 @@ import { ESide } from '~/common';
 export default function AutoCompact() {
   const localize = useLocalize();
   const methods = useFormContext<AgentForm>();
-  const { control, watch } = methods;
+  const { control, watch, setValue } = methods;
   const autoCompact = watch('auto_compact');
 
   return (
@@ -28,16 +28,11 @@ export default function AutoCompact() {
               <CircleHelpIcon className="h-4 w-4 text-text-tertiary" />
             </HoverCardTrigger>
           </div>
-          <Controller
-            name="auto_compact"
-            control={control}
-            render={({ field }) => (
-              <Switch
-                id="auto_compact"
-                checked={field.value ?? false}
-                onCheckedChange={field.onChange}
-              />
-            )}
+          <Switch
+            id="auto_compact"
+            aria-label={localize('com_ui_agent_auto_compact')}
+            checked={autoCompact ?? false}
+            onCheckedChange={(checked) => setValue('auto_compact', checked, { shouldDirty: true })}
           />
         </div>
         {autoCompact === true && (
@@ -46,7 +41,11 @@ export default function AutoCompact() {
             control={control}
             render={({ field }) => (
               <FormInput
-                field={field}
+                field={{
+                  ...field,
+                  onChange: (e: React.ChangeEvent<HTMLInputElement>) =>
+                    setValue('compact_threshold', Number(e.target.value), { shouldDirty: true }),
+                }}
                 containerClass="w-1/2"
                 inputClass="w-full"
                 label={localize('com_ui_agent_compact_threshold')}
