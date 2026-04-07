@@ -1,4 +1,4 @@
-import { useMemo } from 'react';
+import { useMemo, useEffect } from 'react';
 import { ChevronLeft } from 'lucide-react';
 import { AgentCapabilities } from 'librechat-data-provider';
 import { useFormContext, Controller } from 'react-hook-form';
@@ -17,12 +17,13 @@ export default function AdvancedPanel() {
   const { control, watch, clearErrors } = methods;
   const currentAgentId = watch('id');
 
-  // When AgentConfig unmounts (on entering Advanced panel), RHF may retain stale
-  // validation errors for fields like 'name' that had rules. Clear them so
-  // handleSubmit can call onSubmit (it skips onSubmit when errors exist).
-  clearErrors();
-
   const { agentsConfig, setActivePanel } = useAgentPanelContext();
+
+  // Clear stale validation errors (e.g. name required) from AgentConfig fields
+  // on mount only — so handleSubmit can call onSubmit from the Advanced panel.
+  useEffect(() => {
+    clearErrors();
+  }, [clearErrors]);
   const chainEnabled = useMemo(
     () => agentsConfig?.capabilities.includes(AgentCapabilities.chain) ?? false,
     [agentsConfig],
