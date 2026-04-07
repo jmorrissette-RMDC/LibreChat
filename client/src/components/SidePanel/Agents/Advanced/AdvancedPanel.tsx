@@ -14,8 +14,13 @@ import { Panel } from '~/common';
 export default function AdvancedPanel() {
   const localize = useLocalize();
   const methods = useFormContext<AgentForm>();
-  const { control, watch } = methods;
+  const { control, watch, clearErrors } = methods;
   const currentAgentId = watch('id');
+
+  // When AgentConfig unmounts (on entering Advanced panel), RHF may retain stale
+  // validation errors for fields like 'name' that had rules. Clear them so
+  // handleSubmit can call onSubmit (it skips onSubmit when errors exist).
+  clearErrors();
 
   const { agentsConfig, setActivePanel } = useAgentPanelContext();
   const chainEnabled = useMemo(
