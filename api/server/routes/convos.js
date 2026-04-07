@@ -321,9 +321,15 @@ router.post('/duplicate', forkIpLimiter, forkUserLimiter, async (req, res) => {
  * and stores the summary on the oldest message in the DB.
  * @route POST /:conversationId/compact
  */
-router.post('/:conversationId/compact', validateConvoAccess, async (req, res) => {
+router.post('/:conversationId/compact', async (req, res) => {
   const { conversationId } = req.params;
   const userId = req.user.id;
+
+  const { getConvo } = require('~/models/Conversation');
+  const convo = await getConvo(userId, conversationId);
+  if (!convo) {
+    return res.status(404).json({ message: 'Conversation not found' });
+  }
 
   try {
     const { getMessages, updateMessage } = require('~/models');
@@ -367,11 +373,10 @@ router.post('/:conversationId/compact', validateConvoAccess, async (req, res) =>
       return res.json({ message: 'Compaction produced no summary' });
     }
 
-    await updateMessage({
+    await updateMessage(req, {
       messageId: toSummarize[0].messageId,
       summary,
-      summaryTokenCount: summary.length / 4,
-      user: userId,
+      summaryTokenCount: Math.ceil(summary.length / 4),
     });
 
     logger.debug(`[POST /:conversationId/compact] Compacted ${toSummarize.length} messages for ${conversationId}`);
