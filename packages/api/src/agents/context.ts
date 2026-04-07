@@ -1,5 +1,5 @@
 import { DynamicStructuredTool } from '@langchain/core/tools';
-import { Constants } from 'librechat-data-provider';
+import { Constants, isEphemeralAgentId } from 'librechat-data-provider';
 import type { Agent, TEphemeralAgent } from 'librechat-data-provider';
 import type { LCTool } from '@librechat/agents';
 import type { Logger } from 'winston';
@@ -136,7 +136,10 @@ export async function applyContextToAgent({
   const baseInstructions = agent.instructions || '';
 
   try {
-    const mcpServers = ephemeralAgent?.mcp?.length ? ephemeralAgent.mcp : extractMCPServers(agent);
+    // For real agents (non-ephemeral), always use the agent's own configured MCP tools.
+    // ephemeralAgent.mcp is only for non-agent chat mode where users toggle tools per-session.
+    const useEphemeralMcp = (!agentId || isEphemeralAgentId(agentId)) && ephemeralAgent?.mcp?.length;
+    const mcpServers = useEphemeralMcp ? ephemeralAgent.mcp : extractMCPServers(agent);
     const mcpInstructions = await getMCPInstructionsForServers(mcpServers, mcpManager, logger);
 
     agent.instructions = buildAgentInstructions({
