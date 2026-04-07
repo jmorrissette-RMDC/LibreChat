@@ -299,7 +299,9 @@ export default function AgentPanel() {
     },
     [getValues, uploadAvatarMutation],
   );
-  const agent_id = useWatch({ control, name: 'id' });
+  /** NOTE: agent_id from useWatch is undefined when AgentConfig is unmounted (e.g. Advanced panel).
+   * Always prefer `data.id` inside onSubmit. This value is only used outside of onSubmit. */
+  const agent_id = useWatch({ control, name: 'id' }) || getValues('id');
   const previousVersionRef = useRef<number | undefined>();
 
   const allowedProviders = useMemo(
